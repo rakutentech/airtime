@@ -1,5 +1,19 @@
 <?php
 
+require_once 'customfilters/ImageSize.php';
+
+class Zend_File_Transfer_Adapter_HttpDummy extends Zend_File_Transfer_Adapter_Http
+{
+    public function isValid($files = null)
+    {
+        if ($this->_options['ignoreNoFile']) {
+            return true;
+        }
+
+        return parent::isValid($files);
+    }
+}
+
 class Application_Form_AddShowStyle extends Zend_Form_SubForm
 {
 
@@ -41,6 +55,35 @@ class Application_Form_AddShowStyle extends Zend_Form_SubForm
         $c->setValidators(array(
                 'Hex', $stringLengthValidator
         ));
+
+        
+        // Show Logo
+        $stationLogoUpload = new Zend_Form_Element_File('add_show_logo');
+        $stationLogoUpload->setLabel(_('Show Logo:'))
+            ->addValidator('Count', false, 1)
+            ->addValidator('Extension', false, 'jpg,jpeg,png,gif')
+            ->setRequired(false)
+            ->setMaxFileSize(5 * 1024 * 1024)
+            ->addFilter('ImageSize');
+        $stationLogoUpload->setAttrib('accept', 'image/*');
+        $stationLogoUpload->setTransferAdapter(new Zend_File_Transfer_Adapter_HttpDummy());
+        $this->addElement($stationLogoUpload);
+
+        //Show Logo Preview
+        $stationLogoPreview = new Zend_Form_Element_Image('add_show_logo_preview');
+        $stationLogoPreview->setLabel(_('Logo Preview:'));
+        $stationLogoPreview->getDecorator('Label')->setOption('style', 'display: none;');
+        $stationLogoPreview->setAttrib('disabled', 'disabled');
+        $stationLogoPreview->setAttrib('src', '');
+        $stationLogoPreview->setAttrib('style', 'display:none;');
+        $this->addElement($stationLogoPreview);
+
+        //Show Logo Remove Button
+        $stationLogoRemove = new Zend_Form_Element_Button('add_show_logo_remove');
+        $stationLogoRemove->setLabel(_('Remove'));
+        $stationLogoRemove->setAttrib('class', 'btn');
+        $stationLogoRemove->setAttrib('style', 'display:none;');
+        $this->addElement($stationLogoRemove);        
     }
 
     public function disable()
@@ -52,5 +95,4 @@ class Application_Form_AddShowStyle extends Zend_Form_SubForm
             }
         }
     }
-
 }

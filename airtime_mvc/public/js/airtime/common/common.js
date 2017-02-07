@@ -97,6 +97,12 @@ function open_audio_preview(type, id, audioFileTitle, audioFileArtist) {
     if(index != -1){
         audioFileTitle = audioFileTitle.substring(0,index);
     }
+    if(!audioFileTitle){
+      audioFileTitle = ' '
+    }
+    if(!audioFileArtist){
+      audioFileArtist = ' '
+    }
     // The reason that we need to encode artist and title string is that
     // sometime they contain '/' or '\' and apache reject %2f or %5f
     // so the work around is to encode it twice.

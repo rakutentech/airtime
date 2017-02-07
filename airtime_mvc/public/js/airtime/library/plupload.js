@@ -19,6 +19,16 @@ $(document).ready(function() {
 
 	uploader = $("#plupload_files").pluploadQueue();
 
+	uploader.bind('ChunkUploaded', function(up, file, json) {
+	    response = jQuery.parseJSON(json.response);
+	    if(response.error !== undefined)
+	    {
+        file.status = plupload.FAILED;
+        file.name += ' [ ' + response.error.message + ' ]';
+        up.stop();
+	    }
+	});
+
 	uploader.bind('FileUploaded', function(up, file, json) {
 		var j = jQuery.parseJSON(json.response);
 		

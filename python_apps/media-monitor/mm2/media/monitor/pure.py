@@ -9,6 +9,7 @@ import contextlib
 import shutil, pipes
 import re
 import sys
+import time
 import stat
 import hashlib
 import locale
@@ -27,6 +28,9 @@ supported_extensions = [u"mp3", u"ogg", u"oga", u"flac", u"wav",
                         u'm4a', u'mp4', 'opus']
 
 unicode_unknown = u'unknown'
+
+mp3val = 'mp3val'
+vbrfix = 'vbrfix'
 
 path_md = ['MDATA_KEY_TITLE', 'MDATA_KEY_CREATOR', 'MDATA_KEY_SOURCE',
             'MDATA_KEY_TRACKNUMBER', 'MDATA_KEY_BITRATE']
@@ -177,16 +181,45 @@ def file_locked(path):
     out = proc.communicate()[0].strip('\r\n')
     return bool(out)
 
+def wait_to_move(old):
+    # Check if the file that we need to move is already complete
+    # There is a chance that the file is still ongoing its copy from another location ( i.e. from /tmp/plupload to /srv/airtime/stor/organize/) 
+    # so this file might still not be in its full size 
+    
+    # Wait for 5 minutes before giving up 
+    retry_cnt = 5 * 60
+    timeout = False
+    moved_size = os.path.getsize(old)
+    orig_file_size = file_size(old)
+    while orig_file_size > 0:
+        cur_size = os.path.getsize(old)
+        retry_cnt -= 1
+        if cur_size >= orig_file_size : 
+            moved_size = cur_size
+            break
+        if retry_cnt <= 0: 
+            timeout = True
+            break
+        time.sleep(1)
+
+    return { 'moved_size' : moved_size, 'timeout' : timeout }
+
 def magic_move(old, new, after_dir_make=lambda : None):
     """ Moves path old to new and constructs the necessary to
     directories for new along the way """
     new_dir = os.path.dirname(new)
     if not os.path.exists(new_dir): os.makedirs(new_dir)
+
     # We need this crusty hack because anytime a directory is created we must
     # re-add it with add_watch otherwise putting files in it will not trigger
     # pyinotify events
     after_dir_make()
-    shutil.move(old,new)
+
+    # Add some try clause just to diagnose mysterious problems
+    try:
+        shutil.move(old,new)
+    except Exception as e: 
+        raise
 
 def move_to_dir(dir_path,file_path):
     """ moves a file at file_path into dir_path/basename(filename) """
@@ -259,7 +292,7 @@ def organized_path(old_path, root_path, orig_md):
     filepath = None
     ext = extension(old_path)
     def default_f(dictionary, key):
-        if key in dictionary: return len(str(dictionary[key])) == 0
+        if key in dictionary: return len(dictionary[key]) == 0
         else: return True
     # We set some metadata elements to a default "unknown" value because we use
     # these fields to create a path hence they cannot be empty Here "normal"
@@ -398,6 +431,28 @@ def sub_path(directory,f):
     common     = os.path.commonprefix([ normalized, normpath(f) ])
     return common == normalized
 
+def file_size(original_path):
+    fname = "%s.identifier" % original_path
+    file_size = -10000
+
+    if not os.path.exists(fname):
+      return file_size
+
+    try:
+        f = open(fname)
+        for i, line in enumerate(f):
+            if i == 1:
+                # 2nd line
+                file_size = int(line)
+                break
+        f.close()
+    except Exception: raise
+    else:
+        try: os.unlink(fname)
+        except Exception: raise
+
+    return file_size
+
 def owner_id(original_path):
     """ Given 'original_path' return the file name of the of
     'identifier' file. return the id that is contained in it. If no file
@@ -412,14 +467,57 @@ def owner_id(original_path):
             break
         f.close()
     except Exception: pass
-    else:
-        try: os.unlink(fname)
-        except Exception: raise
+    ## Do not delete the file at this point since the file will still be used in other places later
+    # else:
+    #     try: os.unlink(fname)
+    #     except Exception: raise
     return owner_id
 
-def file_playable(pathname):
+def file_fix(pathname):
+    filename, file_extension = os.path.splitext(pathname)
+    if file_extension.lower() != ".mp3":
+      return
+
+    #check file by mp3val
+    p = Popen(mp3val + " '" + pathname + "'", stdin=PIPE, stdout=PIPE, stderr=PIPE, shell=True)
+    stdout_data, stderr_data = p.communicate()
+
+    vbr = False
+    fix = False
+    for line in stdout_data.split('\n'):
+      line = line.rstrip()
+      if line.endswith('VBR detected, but no VBR header is present. Seeking may not work properly.'):
+        vbr = True
+      elif line.endswith('MPEG stream error, resynchronized successfully'):
+        fix = True
+      print line
+
+    p.wait()
+
+    if fix or vbr:
+      tmpname = cp_tmp(pathname)
+
+      #fix file by mp3val if needed
+      if fix:
+          run_mp3val_fix(tmpname)
+
+      #add vbr header by vbrfix if needed
+      if vbr:
+          run_vbrfix(tmpname)
+
+      shutil.move(tmpname, pathname)
+
+      #os.remove(tmpname)
+
+def file_playable(pathname, fix_contents):
     """ Returns True if 'pathname' is playable by liquidsoap. False
     otherwise. """
+
+    try:
+        if fix_contents:
+            file_fix(pathname)
+    except Exception as e:
+        return False
 
     #currently disabled because this confuses inotify....
     return True
@@ -502,6 +600,33 @@ def convert_format(value):
         return True
     else:
         return False
+
+def cp_tmp(file):
+    tmpdir = re.sub('stor/.*', 'stor', file)
+    basename = os.path.basename(file)
+    nfile = "%s/%s" % (tmpdir, basename)
+
+    shutil.copy2(file, nfile)
+    return nfile
+
+def run_vbrfix(file):
+    nfile = file + '.new.mp3'
+    cmd = "cd /tmp && %s -always '%s' '%s' > /dev/null" % (vbrfix, file, nfile)
+    p2 = Popen(cmd, shell=True)
+    p2.wait()
+
+    try:
+        os.remove("/tmp/vbrfix.tmp")
+        os.remove("/tmp/vbrfix.log")
+    except OSError:
+        pass
+    if os.path.exists(nfile):
+        shutil.move(nfile, file)
+
+def run_mp3val_fix(file):
+    cmd = "%s -f -nb -t '%s' > /dev/null" % (mp3val, file)
+    p2 = Popen(cmd, shell=True)
+    p2.wait()
 
 if __name__ == '__main__':
     import doctest

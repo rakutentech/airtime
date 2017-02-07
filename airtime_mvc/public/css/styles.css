@@ -378,8 +378,8 @@ select {
 .wrapper {
     position: absolute;
     top: 141px;
-    left: 10px;
-    right: 10px;
+    left: 5px;
+    right: 5px;
     padding:10px 0 0 0;
 }
 

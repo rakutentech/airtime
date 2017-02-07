@@ -724,6 +724,53 @@ SQL;
             ':endTime'   => $p_endTime), 'all');
     }
 
+    public static function isBroadcasting( $showId )
+    {
+       $dtNow = new DateTime("now", new DateTimeZone("UTC"));
+        
+       $sql = <<<SQL
+SELECT ( count(id) > 0 ) as broadcasting
+FROM cc_show_instances
+WHERE show_id = :sid AND
+    starts <= :now::TIMESTAMP and ends >= :now::TIMESTAMP
+SQL;
+        return Application_Common_Database::prepareAndExecute( $sql,
+            array( ':sid' => $showId, ':now' => $dtNow->format("Y-m-d H:i:s") ), 'column' );        
+    }
+
+    public static function didTimeChange(  $instanceId, $showId, $p_startTime, $is_show = false )
+    {
+        $cloneStart = clone $p_startTime;
+        $startStr = $cloneStart->setTimezone(new DateTimeZone("UTC"))->format("Y-m-d H:i:s");
+
+        if( $is_show ) //case for show parent
+        {
+            //Find the next occuring instance of the show after current time
+            //because from this instance will the edit show form get its values for show start and end times
+            $dtNow = new DateTime("now", new DateTimeZone("UTC"));
+            $sql = <<<SQL
+SELECT ( starts != :startdt ) as time_changed
+FROM cc_show_instances
+WHERE show_id = :sid AND
+    starts > :now::TIMESTAMP
+ORDER BY starts
+LIMIT 1
+SQL;
+            return Application_Common_Database::prepareAndExecute( $sql,
+                array( ':sid' => $showId, ':startdt' => $startStr, ':now' => $dtNow->format("Y-m-d H:i:s")), 'column' );
+        }
+        else //case for show instance
+        {
+            $sql = <<<SQL
+SELECT ( starts != :startdt ) as time_changed
+FROM cc_show_instances
+WHERE id = :sid
+SQL;
+            return Application_Common_Database::prepareAndExecute( $sql,
+                array( ':sid' => $instanceId, ':startdt' => $startStr ), 'column' );
+        }    
+    }
+
     public function isRepeating()
     {
         return $this->getShow()->isRepeating();

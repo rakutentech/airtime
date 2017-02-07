@@ -124,7 +124,7 @@ function checkRMQConnection() {
  * @return boolean true if airtime-media-monitor is running
  */
 function checkMediaMonitorService() {
-    exec("pgrep -f -u www-data airtime-media-monitor", $out, $status);
+    exec("pgrep -f -o -u www-data airtime-media-monitor", $out, $status);
     if (array_key_exists(0, $out) && $status == 0) {
         return posix_kill(rtrim($out[0]), 0);
     }
@@ -137,7 +137,7 @@ function checkMediaMonitorService() {
  * @return boolean true if airtime-playout is running
  */
 function checkPlayoutService() {
-    exec("pgrep -f -u www-data airtime-playout", $out, $status);
+    exec("pgrep -f -o -u www-data airtime-playout", $out, $status);
     if (array_key_exists(0, $out) && $status == 0) {
         return posix_kill(rtrim($out[0]), 0);
     }
@@ -150,7 +150,7 @@ function checkPlayoutService() {
  * @return boolean true if airtime-liquidsoap is running
  */
 function checkLiquidsoapService() {
-    exec("pgrep -f -u www-data airtime-liquidsoap", $out, $status);
+    exec("pgrep -f -o -u www-data airtime-liquidsoap", $out, $status);
     if (array_key_exists(0, $out) && $status == 0) {
         return posix_kill(rtrim($out[0]), 0);
     }

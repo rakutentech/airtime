@@ -40,8 +40,23 @@ class PypoLiqQueue(Thread):
                             timeout=time_until_next_play)
             except Empty, e:
                 #Time to push a scheduled item.
-                media_item = schedule_deque.popleft()
-                self.pypo_liquidsoap.play(media_item)
+                # Make sure that before we push a media for playing in liquidsoap, there is still some 
+                # play time left in the media and that the media is not already playing currently
+                while len(schedule_deque):
+                    #Time to push a scheduled item.
+                    media_item = schedule_deque.popleft()
+                    endtime_minus_now = self.date_interval_to_seconds_withneg(media_item['end'] - datetime.utcnow())
+                    if endtime_minus_now > 0:
+                        if self.pypo_liquidsoap.is_media_playing(media_item) == False:
+                            break
+                        else:
+                            self.logger.warn("Media is already playing, skip this media: %s", media_item)
+                    else:
+                        self.logger.warn("Only %s secs remaining in media, skip this media: %s", endtime_minus_now, media_item);
+                    media_item = None
+                
+                if media_item != None:
+                    self.pypo_liquidsoap.play(media_item)
                 if len(schedule_deque):
                     time_until_next_play = \
                             self.date_interval_to_seconds(
@@ -78,6 +93,14 @@ class PypoLiqQueue(Thread):
                    (interval.seconds + interval.days * 24 * 3600) * 10 ** 6) / float(10 ** 6)
         if seconds < 0: seconds = 0
 
+        return seconds
+
+    def date_interval_to_seconds_withneg(self, interval):
+        """
+        Convert timedelta object into int representing the number of seconds.
+        """
+        seconds = (interval.microseconds + \
+                   (interval.seconds + interval.days * 24 * 3600) * 10 ** 6) / float(10 ** 6)
         return seconds
 
     def run(self):

@@ -48,6 +48,27 @@ Class Application_Form_Helper_ValidationTypes {
 
         return $validator;
     }
+
+    public static function overrideStringLengthValidatorUtf8($p_min, $p_max)
+    {
+        $validator = new Zend_Validate_StringLength();
+        $validator->setMin($p_min);
+        $validator->setMax($p_max);
+
+        $validator->setEncoding("UTF-8");
+
+        $validator->setMessage(
+            _("'%value%' is less than %min% characters long"),
+            Zend_Validate_StringLength::TOO_SHORT
+        );
+
+        $validator->setMessage(
+            _("'%value%' is more than %max% characters long"),
+            Zend_Validate_StringLength::TOO_LONG
+        );
+
+        return $validator;
+    }
     
     public static function overrideStringLengthValidator($p_min, $p_max)
     {

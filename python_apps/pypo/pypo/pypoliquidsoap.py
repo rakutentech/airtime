@@ -68,6 +68,13 @@ class PypoLiquidsoap():
         else:
             self.logger.warn("File %s did not become ready in less than 5 seconds. Skipping...", media_item['dst'])
 
+    def is_media_playing(self, media_item):
+        for i in self.liq_queue_tracker:
+            mi = self.liq_queue_tracker[i]
+            if mi != None and media_item['end'] == mi['end'] and media_item['start'] == mi['start'] and media_item['id'] == mi['id']:
+                return True
+        return False     
+
     def handle_event_type(self, media_item):
         if media_item['event_type'] == "kick_out":
             self.telnet_liquidsoap.disconnect_source("live_dj")

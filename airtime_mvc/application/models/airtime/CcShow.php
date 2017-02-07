@@ -319,6 +319,7 @@ class CcShow extends BaseCcShow {
             $info['color'] = $this->getDbColor();
             $info['background_color'] = $this->getDbBackgroundColor();
             $info['linked'] = $this->getDbLinked();
+            $info['logo'] = $this->getDbLogo();
             return $info;
         }
 

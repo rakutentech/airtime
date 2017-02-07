@@ -476,6 +476,9 @@ class ScheduleController extends Zend_Controller_Action
             $data['add_show_day_check'] = null;
         }
 
+        //Change to binary data before trying to store in DB
+        $data['add_show_logo'] = base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $data['add_show_logo']));
+
         $forms = $this->createShowFormAction();
 
         list($data, $validateStartDate, $validateStartTime, $originalShowStartDateTime) =
@@ -524,6 +527,9 @@ class ScheduleController extends Zend_Controller_Action
         if ($data['add_show_day_check'] == "") {
             $data['add_show_day_check'] = null;
         }
+
+        //Change to binary data before trying to store in DB
+        $data['add_show_logo'] = base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $data['add_show_logo']));
 
         $forms = $this->createShowFormAction();
 

@@ -1516,7 +1516,8 @@ SQL;
         $ccShow->setDbLiveStreamUsingCustomAuth($showData['cb_custom_auth'] == 1);
         $ccShow->setDbLiveStreamUser($showData['custom_username']);
         $ccShow->setDbLiveStreamPass($showData['custom_password']);
-        
+        $ccShow->setDbLogo($showData['add_show_logo']);
+
         //Here a user has edited a show and linked it.
         //We need to grab the existing show instances ids and fill their content
         //with the content from the show instance that was clicked on to edit the show.

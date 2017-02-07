@@ -874,6 +874,19 @@ SQL;
         return $results;
     }
 
+    public static function deleteTmpFile($combinedFilePath, $tmpPath)
+    {
+        if( file_exists($combinedFilePath) )
+        {
+            unlink($combinedFilePath);
+        }
+
+        if( file_exists($tmpPath) )
+        {
+            unlink($tmpPath);
+        }
+    }
+
     public static function uploadFile($p_targetDir)
     {
         // HTTP headers for no cache etc
@@ -919,7 +932,7 @@ SQL;
 
             closedir($dir);
         } else
-            die('{"jsonrpc" : "2.0", "error" : {"code": 100, "message": _("Failed to open temp directory.")}, "id" : "id"}');
+            die('{"jsonrpc" : "2.0", "error" : {"code": 100, "message": "' . _("Failed to open temp directory.") .'"}, "id" : "id"}');
 
         // Look for the content type header
         if (isset($_SERVER["HTTP_CONTENT_TYPE"]))
@@ -945,15 +958,21 @@ SQL;
                     if ($in) {
                         while (($buff = fread($in, 4096)))
                             fwrite($out, $buff);
-                    } else
-                        die('{"jsonrpc" : "2.0", "error" : {"code": 101, "message": _("Failed to open input stream.")}, "id" : "id"}');
+                    } else {
+                        self::deleteTmpFile($tempFilePath, $_FILES['file']['tmp_name']);
+                        die('{"jsonrpc" : "2.0", "error" : {"code": 101, "message": "' . _("Failed to open input stream.") .'"}, "id" : "id"}');
+                    }
 
                     fclose($out);
                     unlink($_FILES['file']['tmp_name']);
-                } else
-                    die('{"jsonrpc" : "2.0", "error" : {"code": 102, "message": _("Failed to open output stream.")}, "id" : "id"}');
-            } else
-                die('{"jsonrpc" : "2.0", "error" : {"code": 103, "message": _("Failed to move uploaded file.")}, "id" : "id"}');
+                } else {
+                    self::deleteTmpFile($tempFilePath, $_FILES['file']['tmp_name']);
+                    die('{"jsonrpc" : "2.0", "error" : {"code": 102, "message": "' . _("Failed to open output stream.") .'"}, "id" : "id"}');
+                }
+            } else {
+                self::deleteTmpFile($tempFilePath, $_FILES['file']['tmp_name']);
+                die('{"jsonrpc" : "2.0", "error" : {"code": 103, "message": "' . _("Failed to move uploaded file.") .'"}, "id" : "id"}');
+            }
         } else {
             // Open temp file
             $out = fopen($tempFilePath, $chunk == 0 ? "wb" : "ab");
@@ -965,11 +984,11 @@ SQL;
                     while (($buff = fread($in, 4096)))
                         fwrite($out, $buff);
                 } else
-                    die('{"jsonrpc" : "2.0", "error" : {"code": 101, "message": _("Failed to open input stream.")}, "id" : "id"}');
+                    die('{"jsonrpc" : "2.0", "error" : {"code": 101, "message": "' .  _("Failed to open input stream.") .'"}, "id" : "id"}');
 
                 fclose($out);
             } else
-                die('{"jsonrpc" : "2.0", "error" : {"code": 102, "message": _("Failed to open output stream.")}, "id" : "id"}');
+                die('{"jsonrpc" : "2.0", "error" : {"code": 102, "message": "' . _("Failed to open output stream.") .'"}, "id" : "id"}');
         }
 
         return $tempFilePath;
@@ -1036,8 +1055,15 @@ SQL;
         } else {
             $uid = $user->getId();
         }
+
+        //Get the file size
+        $file_size = filesize($audio_file);
+        Logging::info("file_size: '$file_size'");
+
+        $iden_string = $uid.PHP_EOL.$file_size;
+
         $id_file = "$audio_stor.identifier";
-        if (file_put_contents($id_file, $uid) === false) {
+        if (file_put_contents($id_file, $iden_string) === false) {
             Logging::info("Could not write file to identify user: '$uid'");
             Logging::info("Id file path: '$id_file'");
             Logging::info("Defaulting to admin (no identification file was

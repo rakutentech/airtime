@@ -128,7 +128,7 @@ class AirtimeMessageReceiver(Loggable):
         except InvalidMetadataElement as e:
             self.logger.info("Metadata instance not supported for this file '%s'" \
                     % e.path)
-            self.logger.info(str(e))
+            self.logger.info(e)
         except Exception as e:
             # TODO : add md_path to problem path or something?
             self.fatal_exception("Unknown error when writing metadata to: '%s'"

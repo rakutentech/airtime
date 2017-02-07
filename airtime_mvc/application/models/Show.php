@@ -1,5 +1,7 @@
 <?php
 
+require_once 'formatters/UrlFormatter.php';
+
 class Application_Model_Show
 {
     private $_showId;
@@ -75,6 +77,19 @@ class Application_Model_Show
     {
         $show = CcShowQuery::create()->findPK($this->_showId);
         $show->setDbColor($color);
+    }
+
+    public function getLogo()
+    {
+        $show = CcShowQuery::create()->findPK($this->_showId);
+
+        return $show->getDbLogo();
+    }
+
+    public function setLogo($logo)
+    {
+        $show = CcShowQuery::create()->findPK($this->_showId);
+        $show->setDbLogo($logo);
     }
 
     public function getUrl()
@@ -1133,6 +1148,8 @@ SQL;
         $CC_CONFIG = Config::getConfig();
         $con = Propel::getConnection();
 
+        $showLogoApi = UrlFormatter::showLogoUrl();
+
         // This will fetch the currently playing show first, then any 
         // upcoming shows within our interval, and finally move on to 
         // previous shows in the past 2 days.
@@ -1144,7 +1161,11 @@ SELECT s.name,
        si.id AS instance_id,
        si.record,
        s.url,
-       s.image_path,
+       CASE
+        WHEN ( s.logo IS NOT NULL AND s.logo != '' ) THEN '{$showLogoApi}' || s.id
+        ELSE null
+       END 
+       AS image_path,
        starts,
        ends
 FROM cc_show_instances si
@@ -1161,6 +1182,7 @@ ORDER BY
     WHEN si.starts > :timeNow::timestamp THEN 2
     ELSE 3
   END
+  , si.starts
 LIMIT :lim
 SQL;
 
@@ -1221,6 +1243,8 @@ SQL;
     
         $CC_CONFIG = Config::getConfig();
         $con = Propel::getConnection();
+
+        $showLogoApi = UrlFormatter::showLogoUrl();
     
         //TODO, returning starts + ends twice (once with an alias). Unify this after the 2.0 release. --Martin
         $sql = <<<SQL
@@ -1232,7 +1256,11 @@ SELECT si.starts AS start_timestamp,
        si.id AS instance_id,
        si.record,
        s.url,
-       s.image_path,
+       CASE
+        WHEN ( s.logo IS NOT NULL AND s.logo != '' ) THEN '{$showLogoApi}' || s.id
+        ELSE null
+       END 
+       AS image_path,
        starts,
        ends
 FROM cc_show_instances si
@@ -1368,6 +1396,8 @@ SQL;
             $timeEnd = "'$timeStart' + INTERVAL '2 days'";
         }
 
+        $showLogoApi = UrlFormatter::showLogoUrl();
+
         //TODO, returning starts + ends twice (once with an alias). Unify this after the 2.0 release. --Martin
         $sql = <<<SQL
 SELECT si.starts AS start_timestamp,
@@ -1377,6 +1407,12 @@ SELECT si.starts AS start_timestamp,
        si.id AS instance_id,
        si.record,
        s.url,
+       s.description,
+       CASE
+        WHEN ( s.logo IS NOT NULL AND s.logo != '' ) THEN '{$showLogoApi}' || s.id
+        ELSE null
+       END 
+       AS image_path,
        starts,
        ends
 FROM cc_show_instances si

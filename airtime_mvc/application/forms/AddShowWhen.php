@@ -135,6 +135,40 @@ class Application_Form_AddShowWhen extends Zend_Form_SubForm
                 }
             }
         }
+
+        // if currently broadcasting and the start time changed, return error
+        // 
+        // Summary of what the user can do while the show being edited is currently broadcasting:
+        // 1. Show IS NOT repeating
+        //      a. User can change any show information EXCEPT start date and time
+        // 2. Show IS repeating
+        //      2.1 Show parent is being edited
+        //          a. User can change any show information EXCEPT start date and time BUT if the end date/time is changed,
+        //               it will only be applied to the next occurring show child/instance that is not broadcasting currently
+        //      2.2 Show child/instance is being edited
+        //          a. User can change any show information EXCEPT start date and time and the changes will only be applied to this show instance
+        // 
+        // Additional Notes:
+        // 1. When a user edits a repeating show parent detail, the start and end date/time that will be displayed initially in the show edit form is 
+        //    the value for the next show instance. e.g. If the repeating show repeats weekly every 12:00 to 13:00 from Feb 6 and the current time is Feb 6 
+        //    12:00, when the user edits the show parent detail button, the initial value of the start date/time in the show edit form that will be displayed 
+        //    is Feb 13 12:00.
+        // 2.
+        //    $validateStartDate == true means the user is trying to add/update a show parent,
+        //    $validateStartDate == false means the user is trying to add/update a show instance
+        //
+        if( $formData['add_show_instance_id'] > 0
+            && Application_Model_ShowInstance::isBroadcasting($formData['add_show_id']) 
+            && Application_Model_ShowInstance::didTimeChange(
+                $formData['add_show_instance_id'], 
+                $formData['add_show_id'],
+                $showStartDateTime, 
+                $validateStartDate
+            )
+        ){
+            $this->getElement('add_show_end_time')->setErrors(array(_('Cannot edit currently broadcasting show')));
+            $valid = false;
+        }
         
         // if end time is in the past, return error
         if ($showEndDateTime < $nowDateTime) {

@@ -132,7 +132,7 @@ class Metadata(Loggable):
         # Forcing the unicode through
         try    : fpath = fpath.decode("utf-8")
         except : pass
-        self.__metadata = global_reader.read_mutagen(fpath)
+        self.__metadata, self.__nmdata = global_reader.read_mutagen(fpath)
 
     def is_recorded(self):
         """
@@ -146,6 +146,9 @@ class Metadata(Loggable):
         constructed
         """
         return copy.deepcopy(self.__metadata)
+
+    def extract_nmdata(self):
+        return copy.deepcopy(self.__nmdata)
 
     def utf8(self):
         """

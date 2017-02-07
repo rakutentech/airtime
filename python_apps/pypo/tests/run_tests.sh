@@ -14,5 +14,7 @@ SCRIPTPATH=`dirname $SCRIPT`
 
 export PYTHONPATH=$PYTHONPATH:$SCRIPTPATH/..:$SCRIPTPATH/../..
 
-py.test
+# Include the pypo directory
+export PYTHONPATH=$PYTHONPATH:../pypo
+py.test -s --ignore=test_modify_cue_in.py
 

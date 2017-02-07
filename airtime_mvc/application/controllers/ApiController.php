@@ -10,6 +10,7 @@ class ApiController extends Zend_Controller_Action
             "week-info", 
             "station-metadata", 
             "station-logo",
+            "show-logo",
             "show-history-feed", 
             "item-history-feed",
             "shows",
@@ -645,6 +646,39 @@ class ApiController extends Zend_Controller_Action
     
             header("Content-type: " . $mime_type);
             echo $blob;
+        } else {
+            header('HTTP/1.0 401 Unauthorized');
+            print _('You are not allowed to access this resource. ');
+            exit;
+        }
+    }
+
+    /**
+     * API endpoint to display the show logo
+     */
+    public function showLogoAction()
+    {
+        if (Application_Model_Preference::GetAllow3rdPartyApi()) {
+            // disable the view and the layout
+            $this->view->layout()->disableLayout();
+            $this->_helper->viewRenderer->setNoRender(true);
+    
+            $model = new Application_Model_Show($this->_getParam('id'));
+
+            $logo = $model->getLogo();
+
+            // if there's no logo, just die - redirects to a 404
+            if (!$logo || $logo === '') {
+                return;
+            }
+    
+            // use finfo to get the mimetype from the decoded blob
+            $f = finfo_open();
+            $mime_type = finfo_buffer($f, $logo, FILEINFO_MIME_TYPE);
+            finfo_close($f);
+    
+            header("Content-type: " . $mime_type);
+            echo $logo;
         } else {
             header('HTTP/1.0 401 Unauthorized');
             print _('You are not allowed to access this resource. ');

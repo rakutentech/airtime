@@ -287,7 +287,17 @@ class Application_Service_ShowFormService
         $form->populate(
             array(
                 'add_show_background_color' => $this->ccShow->getDbBackgroundColor(),
-                'add_show_color' => $this->ccShow->getDbColor()));
+                'add_show_color' => $this->ccShow->getDbColor()
+            )
+        );
+
+        $binImg = $this->ccShow->getDbLogo();
+        if( $binImg !== null ){
+            $f = finfo_open();
+            $mime_type = finfo_buffer($f, $binImg, FILEINFO_MIME_TYPE);
+            $base64Img = 'data:' . $mime_type . ';base64,' . base64_encode($binImg);
+            $form->getElement('add_show_logo_preview')->setOptions(array('src' => $base64Img));
+        }
     }
 
     private function populateFormLive($form)

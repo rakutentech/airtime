@@ -11,6 +11,9 @@ import subprocess
 import json
 import logging
 
+from ..saas.thread  import user
+from ..monitor.pure import LazyProperty
+
 class FakeMutagen(dict):
     """
     Need this fake mutagen object so that airtime_special functions
@@ -152,12 +155,14 @@ class MetadataElement(Loggable):
             except ValueError, e: r = ''
         return r
 
-def normalize_mutagen(path):
+def normalize_mutagen(path, fix_contents):
     """
     Consumes a path and reads the metadata using mutagen. normalizes some of
     the metadata that isn't read through the mutagen hash
     """
-    if not mmp.file_playable(path): raise BadSongFile(path)
+    move_return = mmp.wait_to_move(path)
+
+    if not mmp.file_playable(path, fix_contents): raise BadSongFile(path)
     try              : m = mutagen.File(path, easy=True)
     except Exception : raise BadSongFile(path)
     if m is None: m = FakeMutagen(path)
@@ -176,6 +181,7 @@ def normalize_mutagen(path):
     md['sample_rate'] = getattr(m.info, 'sample_rate', 0)
     md['mime']        = m.mime[0] if len(m.mime) > 0 else u''
     md['path']        = normpath(path)
+    md['move_return'] = move_return
 
     # silence detect(set default cue in and out)
     #try:
@@ -200,6 +206,7 @@ class OverwriteMetadataElement(Exception):
 class MetadataReader(object):
     def __init__(self):
         self.clear()
+        self.fix_contents = None
 
     def register_metadata(self,m):
         if m in self.__mdata_name_map:
@@ -215,6 +222,22 @@ class MetadataReader(object):
         self.__mdata_name_map = {}
         self.__metadata       = []
 
+    @LazyProperty
+    def is_fix_contents(self):
+        if self.fix_contents is not None:
+            return self.fix_contents
+
+        fc = False
+        config = user().mm_config
+        try:
+          if config['media-monitor']['fix_contents'] == "1":
+            fc = True
+        except:
+          pass
+        
+        self.fix_contents = fc
+        return self.fix_contents
+
     def read(self, path, muta_hash):
         normalized_metadata = {}
         for mdata in self.__metadata:
@@ -226,7 +249,10 @@ class MetadataReader(object):
         return normalized_metadata
 
     def read_mutagen(self, path):
-        return self.read(path, normalize_mutagen(path))
+        isfix = self.is_fix_contents
+        nm = normalize_mutagen(path, isfix)
+        rdata = self.read(path, nm)
+        return rdata, nm
 
 global_reader = MetadataReader()
 

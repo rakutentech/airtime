@@ -98,6 +98,10 @@ try:
     rootLogger.setLevel(LOG_LEVEL)
     logger = rootLogger
 
+    fileHandler = logging.handlers.RotatingFileHandler(filename=LOG_PATH, maxBytes=1024*1024*30, backupCount=8)
+    fileHandler.setFormatter(logFormatter)
+    rootLogger.addHandler(fileHandler)
+
     consoleHandler = logging.StreamHandler()
     consoleHandler.setFormatter(logFormatter)
     rootLogger.addHandler(consoleHandler)
@@ -268,7 +272,7 @@ if __name__ == '__main__':
 
 
     ReplayGainUpdater.start_reply_gain(api_client)
-    SilanAnalyzer.start_silan(api_client, logger)
+    #SilanAnalyzer.start_silan(api_client, logger)
 
     pypoFetch_q = Queue()
     recorder_q = Queue()

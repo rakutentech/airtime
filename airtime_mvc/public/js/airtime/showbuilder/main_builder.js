@@ -209,9 +209,9 @@ AIRTIME = (function(AIRTIME) {
             // reset timestamp to redraw the cursors.
             AIRTIME.showbuilder.resetTimestamp();
 
-            $lib.show().width(Math.floor(screenWidth * 0.48));
+            $lib.show().width(Math.floor(screenWidth * 0.46));
 
-            $builder.width(Math.floor(screenWidth * 0.48)).find("#sb_edit")
+            $builder.width(Math.floor(screenWidth * 0.46)).find("#sb_edit")
                     .remove().end().find("#sb_date_start")
                     .css("margin-left", 0).end();
 

@@ -20,8 +20,18 @@ $licenseAnchor = "<a href='" . LICENSE_URL . "' target='_blank'>"
                     . LICENSE_VERSION
                 . "</a>";
 echo sprintf(_('%1$s %2$s is distributed under the %3$s'),
-    $companySiteAnchor, PRODUCT_NAME, $licenseAnchor)
+    $companySiteAnchor, PRODUCT_NAME, $licenseAnchor);
 ?>
+<br />
+<br />
+<?php
+$forkingInfo = "<a href='" . FORK_URL . "' target='_blank'>" . "here</a></br />";
+echo sprintf(_('Forked by %1$s on %2$s. Source code available %3$s'),
+    FORK_COMPANY, FORK_DATE, $forkingInfo);
+echo sprintf(_('Relevant trademarks are owned by %1$s.'),
+    FORK_COMPANY);
+?>
+<br />
 </p>
 </div>
 <br>

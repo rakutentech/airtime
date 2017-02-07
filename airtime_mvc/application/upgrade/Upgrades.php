@@ -8,7 +8,7 @@ class UpgradeManager
     public static function getSupportedSchemaVersions()
     {
         //What versions of the schema does the code support today:
-        return array('2.5.2');
+        return array('2.5.8');
     }
 
     public static function checkIfUpgradeIsNeeded()
@@ -26,11 +26,13 @@ class UpgradeManager
         $upgradeManager = new UpgradeManager();
         $upgraders = array();
         array_push($upgraders, new AirtimeUpgrader252());
+        array_push($upgraders, new AirtimeUpgrader257());
+        array_push($upgraders, new AirtimeUpgrader258());
         /* These upgrades do not apply to open source Airtime yet.
         array_push($upgraders, new AirtimeUpgrader253());
         array_push($upgraders, new AirtimeUpgrader254());
         */
-        return $upgradeManager->runUpgrades(array(new AirtimeUpgrader252()), (dirname(__DIR__) . "/controllers"));
+        return $upgradeManager->runUpgrades($upgraders, (dirname(__DIR__) . "/controllers"));
     }
 
     /**
@@ -356,3 +358,96 @@ class AirtimeUpgrader256 extends AirtimeUpgrader {
 		}
 	}
 }
+
+class AirtimeUpgrader257 extends AirtimeUpgrader {
+    protected function getSupportedSchemaVersions() {
+        return array (
+            '2.5.2', '2.5.3', '2.5.4', '2.5.5', '2.5.6'
+        );
+    }
+    
+    public function getNewVersion() {
+        return '2.5.7';
+    }
+    
+    public function upgrade($dir = __DIR__) {
+        Cache::clear();
+        assert($this->checkIfUpgradeSupported());
+        
+        $newVersion = $this->getNewVersion();
+        
+        try {
+            $this->toggleMaintenanceScreen(true);
+            Cache::clear();
+            
+            // Begin upgrade
+            $airtimeConf = isset($_SERVER['AIRTIME_CONF']) ? $_SERVER['AIRTIME_CONF'] : "/etc/airtime/airtime.conf";
+            $values = parse_ini_file($airtimeConf, true);
+            
+            $username = $values['database']['dbuser'];
+            $password = $values['database']['dbpass'];
+            $host = $values['database']['host'];
+            $database = $values['database']['dbname'];
+                
+            passthru("export PGPASSWORD=$password && psql -h $host -U $username -q -f $dir/upgrade_sql/airtime_"
+                    .$this->getNewVersion()."/upgrade.sql $database 2>&1 | grep -v \"will create implicit index\"");
+            
+            Application_Model_Preference::SetSchemaVersion($newVersion);
+            Cache::clear();
+            
+            $this->toggleMaintenanceScreen(false);
+            
+            return true;
+        } catch(Exception $e) {
+            $this->toggleMaintenanceScreen(false);
+            throw $e;
+        }
+    }
+}
+
+class AirtimeUpgrader258 extends AirtimeUpgrader {
+    protected function getSupportedSchemaVersions() {
+        return array (
+            '2.5.7'
+        );
+    }
+    
+    public function getNewVersion() {
+        return '2.5.8';
+    }
+    
+    public function upgrade($dir = __DIR__) {
+        Cache::clear();
+        assert($this->checkIfUpgradeSupported());
+        
+        $newVersion = $this->getNewVersion();
+        
+        try {
+            $this->toggleMaintenanceScreen(true);
+            Cache::clear();
+            
+            // Begin upgrade
+            $airtimeConf = isset($_SERVER['AIRTIME_CONF']) ? $_SERVER['AIRTIME_CONF'] : "/etc/airtime/airtime.conf";
+            $values = parse_ini_file($airtimeConf, true);
+            
+            $username = $values['database']['dbuser'];
+            $password = $values['database']['dbpass'];
+            $host = $values['database']['host'];
+            $database = $values['database']['dbname'];
+                
+            passthru("export PGPASSWORD=$password && psql -h $host -U $username -q -f $dir/upgrade_sql/airtime_"
+                    .$this->getNewVersion()."/upgrade.sql $database 2>&1 | grep -v \"will create implicit index\"");
+            
+            Application_Model_Preference::SetSchemaVersion($newVersion);
+            Cache::clear();
+            
+            $this->toggleMaintenanceScreen(false);
+            
+            return true;
+        } catch(Exception $e) {
+            $this->toggleMaintenanceScreen(false);
+            throw $e;
+        }
+    }
+}
+

@@ -208,6 +208,76 @@ function getContrastYIQ(hexcolor){
     return (yiq >= 128) ? '000000' : 'ffffff';
 }
 
+function showHideElems( show, elems ){
+    if( show ){
+        elems.forEach( function(elem){
+            elem.show();
+        }); 
+    }else{
+        elems.forEach( function(elem){
+            elem.hide();
+        }); 
+    }
+}
+
+function addError( msg ){
+    $('.errors.img-related').remove();
+    var retElem = $('<ul>').addClass('errors img-related');
+    retElem.append( $('<li>').html(msg) );
+    return retElem;
+}
+
+function isImageFile( filedata, callback ){
+    var img = new Image();
+    img.onload = function() { callback(true); };
+    img.onerror = function() { callback(false); };
+    img.src = filedata;
+}
+
+function readURL(input, elemId, depElems, fileId) {
+
+    if (input.files && input.files[0]) {
+        var reader = new FileReader();
+
+        reader.onload = function (e) {
+            
+            var fileData = e.target.result;
+
+            //Check the file size
+            if( input.files[0].size > $.airtime['MAX_FILE_SIZE']){
+                $('#' + fileId).parents('dl').append( addError('Selected file is greater than ' + $.airtime['MAX_FILE_SIZE'] / (1024 * 1024) + ' MB' ) );
+                $('#' + fileId).val('');
+            }else{
+                isImageFile(fileData, function(isImage){
+                    if (isImage) {
+                        $('#' + elemId).attr('src', fileData);
+                        $('.errors.img-related').remove();
+                        showHideElems( true, depElems );
+                    } else {
+                        $('#' + fileId).parents('dl').append( addError('File format is not supported') );
+                        $('#' + fileId).val('');
+                    }
+                });
+            }         
+        }
+        reader.readAsDataURL(input.files[0]);  
+    }else{
+
+        if( $('#' + elemId).attr('src').length > 0 ){
+            //There is an initial value, probably this is an update of existing entry in DB
+            showHideElems( true, depElems)
+        }else{
+            //The file value was cleared
+            showHideElems( false, depElems)
+        }
+        
+    }
+}
+
+function removeLogo(elemId, previewId){
+    $('#' + previewId).attr('src', '')
+    $('#' + elemId).attr('value', '').trigger('change');
+}
 
 function setAddShowEvents(form) {
 
@@ -581,7 +651,7 @@ function setAddShowEvents(form) {
         }
     })
 
-    form.find("#schedule-show-style input").ColorPicker({
+    form.find("#schedule-show-style input").not(':input[type=file], :input[type=button], :input[type=submit], :input[type=reset]').ColorPicker({
         onChange: function (hsb, hex, rgb, el) {
             $(el).val(hex);
         },
@@ -593,6 +663,24 @@ function setAddShowEvents(form) {
             $(this).ColorPickerSetColor(this.value);
         }
     });
+
+    form.find("#add_show_logo").change(function(){
+        depElems = [];
+        depElems.push($('#add_show_logo_preview'));
+        depElems.push($('#add_show_logo_remove'));
+        depElems.push($('#add_show_logo_preview-label label'));
+
+        readURL(this, 'add_show_logo_preview', depElems, 'add_show_logo_preview');
+    });
+
+    form.find("#add_show_logo_remove").click(function(){
+        removeLogo('add_show_logo', 'add_show_logo_preview');
+    });
+
+    $("#add_show_logo").trigger('change');
+    //Store the max file size limit
+    if( !$.airtime ) $.airtime = {};
+    $.airtime['MAX_FILE_SIZE'] = parseInt(form.find("#MAX_FILE_SIZE").val());
 
     form.find("#add-show-close").click(closeAddShowForm);
 
@@ -630,6 +718,9 @@ function setAddShowEvents(form) {
         // We need to notify the application if date and time were disabled
         data.push({name: 'start_date_disabled', value: startDateDisabled});
         data.push({name: 'start_time_disabled', value: startTimeDisabled});
+
+        //Add show logo data
+        data.push({name: 'add_show_logo', value: $('#add_show_logo_preview').attr('src')});
         
         var hosts = $('#add_show_hosts-element input').map(function() {
             if($(this).attr("checked")) {

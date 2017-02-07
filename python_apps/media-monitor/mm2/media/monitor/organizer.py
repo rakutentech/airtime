@@ -56,6 +56,14 @@ class Organizer(ReportHandler,Loggable):
             if owner_id != -1:
                 target_path = os.path.join(target_path, unicode(owner_id))
 
+            nmdata = event.metadata.extract_nmdata()
+            move_return = nmdata['move_return']
+            if move_return['timeout']:
+                self.logger.warn('File Move NG: Timed OUT, Current file Size: "%s"' % move_return['moved_size'] )
+                raise BadSongFile(event.path)
+            else:
+                self.logger.info('File Move OK: File Size: "%s"' % move_return['moved_size'] )
+
             mdata = event.metadata.extract()
             new_path = mmp.organized_path(event.path, target_path, mdata)
 

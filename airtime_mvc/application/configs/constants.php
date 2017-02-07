@@ -8,6 +8,10 @@ define('COMPANY_SUFFIX'     , 'z.ú.');
 define('COMPANY_SITE'       , 'Sourcefabric.org');
 define('COMPANY_SITE_URL'   , 'http://sourcefabric.org/');
 
+define('FORK_COMPANY'       , 'Rakuten, Inc.');
+define('FORK_URL'   , 'https://github.com/rakutentech/airtime');
+define('FORK_DATE'       , '2017-Jan-25');
+
 define('WHOS_USING_URL'             , 'http://sourcefabric.org/en/airtime/whosusing');
 define('TERMS_AND_CONDITIONS_URL'   , 'http://www.sourcefabric.org/en/about/policy/');
 define('PRIVACY_POLICY_URL'         , 'http://www.sourcefabric.org/en/about/policy/');
@@ -19,7 +23,7 @@ define('LICENSE_URL'        , 'http://www.gnu.org/licenses/agpl-3.0-standalone.h
 define('AIRTIME_COPYRIGHT_DATE' , '2010-2012');
 define('AIRTIME_REST_VERSION'   , '1.1');
 define('AIRTIME_API_VERSION'    , '1.1');
-define('AIRTIME_CODE_VERSION'   , '2.5.2');
+define('AIRTIME_CODE_VERSION'   , '2.5.8');
 
 // Metadata Keys for files
 define('MDATA_KEY_FILEPATH'    , 'filepath');

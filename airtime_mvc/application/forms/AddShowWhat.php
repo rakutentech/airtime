@@ -54,7 +54,7 @@ class Application_Form_AddShowWhat extends Zend_Form_SubForm
             'label'      => _('Description:'),
             'required'   => false,
             'class'      => 'input_text_area',
-            'validators' => array(array('StringLength', false, array(0, $maxLens['description'])))
+            'validators' => array(Application_Form_Helper_ValidationTypes::overrideStringLengthValidatorUtf8(0, $maxLens['description']))
         ));
 
         $descText = $this->getElement('add_show_description');
