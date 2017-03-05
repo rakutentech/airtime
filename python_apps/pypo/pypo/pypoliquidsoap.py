@@ -62,6 +62,7 @@ class PypoLiquidsoap():
             try:
                 self.telnet_liquidsoap.queue_push(available_queue, media_item)
                 self.liq_queue_tracker[available_queue] = media_item
+                
             except Exception as e:
                 self.logger.error(e)
                 raise
@@ -237,7 +238,6 @@ class PypoLiquidsoap():
 
     def clear_all_queues(self):
         self.telnet_liquidsoap.queue_clear_all()
-
 
 class UnknownMediaItemType(Exception):
     pass

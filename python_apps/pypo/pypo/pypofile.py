@@ -2,6 +2,7 @@
 
 from threading import Thread
 from Queue import Empty
+from datetime import datetime
 
 import logging
 import shutil
@@ -66,7 +67,7 @@ class PypoFile(Thread):
                 shutil.copy(src, dst)
 
                 #make file world readable
-                os.chmod(dst, stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
+                os.chmod(dst, stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH | stat.S_IWUSR)
 
                 media_item['file_ready'] = True
             except Exception, e:

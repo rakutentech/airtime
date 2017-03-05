@@ -39,11 +39,11 @@ class PypoLiqQueue(Thread):
                     media_schedule = self.queue.get(block=True, \
                             timeout=time_until_next_play)
             except Empty, e:
-                #Time to push a scheduled item.
+                # Time to push a scheduled item to liquidsoap queue.
                 # Make sure that before we push a media for playing in liquidsoap, there is still some 
                 # play time left in the media and that the media is not already playing currently
                 while len(schedule_deque):
-                    #Time to push a scheduled item.
+                    # Pop an item from the queue and double check if we need to play this now
                     media_item = schedule_deque.popleft()
                     endtime_minus_now = self.date_interval_to_seconds_withneg(media_item['end'] - datetime.utcnow())
                     if endtime_minus_now > 0:
@@ -52,7 +52,13 @@ class PypoLiqQueue(Thread):
                         else:
                             self.logger.warn("Media is already playing, skip this media: %s", media_item)
                     else:
-                        self.logger.warn("Only %s secs remaining in media, skip this media: %s", endtime_minus_now, media_item);
+                        self.logger.warn("Media should have ended %s secs ago, skip this media: %s", -endtime_minus_now, media_item);
+                    media_item = None
+
+                # The media that we popped should not play now. Instead, it should play later so we should return it back to the queue
+                if media_item != None and self.date_interval_to_seconds_withneg(media_item['start'] - datetime.utcnow()) > 0:
+                    self.logger.warn("The popped media should play later, return back to queue: %s", media_item);
+                    schedule_deque.appendleft(media_item)
                     media_item = None
                 
                 if media_item != None:

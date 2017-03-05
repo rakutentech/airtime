@@ -6,8 +6,10 @@ from telnetliquidsoap import DummyTelnetLiquidsoap, TelnetLiquidsoap
 from Queue import Queue
 from threading import Lock
 from threading import Thread
+import pprint
 
 import os
+import re
 import sys
 import signal
 import logging
@@ -28,7 +30,7 @@ config = ConfigObj('/etc/airtime/airtime.conf')
 
 # configure logging
 format = '%(levelname)s - %(pathname)s - %(lineno)s - %(asctime)s - %(message)s'
-logging.basicConfig(level=logging.DEBUG, format=format)
+logging.basicConfig(level=logging.DEBUG, format=format, stream=sys.stdout)
 logging.captureWarnings(True)
 
 ls_host = config['pypo']['ls_host']
@@ -69,16 +71,61 @@ def date_interval_to_seconds_withneg(interval):
                (interval.seconds + interval.days * 24 * 3600) * 10 ** 6) / float(10 ** 6)
     return seconds
 
-def test_pypoliqqueue_play_check():
+def check_playback(media_schedule, caplog):
+    currecord = 0
+    numplays = 0
+    keys = sorted(media_schedule.keys())
 
-    print "\nThis test requires that you listen to the audio being played on the stream to judge if it's OK or not."
-    print "You should hear 2 consecutive but diferent media."
-    print "Two media playing at the same time or the same media played twice in a row means that the test failed.\n"
+    for k in keys:
+        print k.strftime("%Y-%m-%d %H:%M:%S")
+        print media_schedule[k]
+        matched = False
 
-    raw_input("Press Enter to continue...")
+        print "Searching through log record %s to %s" % (currecord, len(caplog.records))
+        for i in range(currecord, len(caplog.records)):
+            record = caplog.records[i]
+
+            if record.filename == "telnetliquidsoap.py":
+                try:
+                    result = re.search('s[0-9].push.+media_id="([0-9]+)".+schedule_table_id="([0-9]+)".+":(.+)', record.msg)
+                    media_id = result.group(1)
+                    row_id = result.group(2)
+                    file = result.group(3)
+                    print "Played at " + record.asctime[:19] + " media_id=" + media_id + " row_id=" + row_id + " file=" + file
+                    matched = True
+                    currecord = i + 1
+                    numplays += 1
+                    break
+                except AttributeError:
+                    # Reg exp not matched
+                    pass
+
+        if matched:
+            assert k.strftime("%Y-%m-%d %H:%M:%S") == record.asctime[:19], "Media should have played at %s" % k.strftime("%Y-%m-%d %H:%M:%S")
+            assert int(media_id) == media_schedule[k]['id'], "Media ID %s should have played at %s" % (media_schedule[k]['id'], k.strftime("%Y-%m-%d %H:%M:%S"))
+            assert int(row_id) == media_schedule[k]['row_id'], "Row ID %s should have played at %s" % (media_schedule[k]['row_id'], k.strftime("%Y-%m-%d %H:%M:%S"))
+        else:
+            assert False, "Media scheduled at %s file %s did not play" % (k.strftime("%Y-%m-%d %H:%M:%S"), media_schedule[k]['dst'])
+
+    # Read the rest of the caplog to check for stray playbacks
+    for i in range(currecord, len(caplog.records)):
+        record = caplog.records[i]
+        print "Current record #" + str(i)
+        if record.filename == "telnetliquidsoap.py":
+            try:
+                result = re.search('s[0-9].push.+media_id="([0-9]+)".+schedule_table_id="([0-9]+)".+":(.+)', record.msg)
+                media_id = result.group(1)
+                print "Record#" + str(i) + ": Played at " + record.asctime[:19] + " media_id=" + media_id + " row_id=" + row_id + " file=" + file
+                numplays += 1
+            except AttributeError:
+                # Reg exp not matched
+                pass
+
+    assert numplays == len(media_schedule)
+
+def test_pypoliqqueue_play_check(caplog):
+
     print "\nTime now: %s" % datetime.utcnow()
-
-    print os.path.abspath("audio_1.mp3")
 
     media_schedule = {}
 
@@ -93,7 +140,7 @@ def test_pypoliqqueue_play_check():
 
     media_schedule[start_dt_1] = {"id": 55, \
             "type":"file", \
-            "row_id":9, \
+            "row_id":1, \
             "uri":"", \
             "dst":audioPath1, \
             "fade_in":0, \
@@ -117,7 +164,7 @@ def test_pypoliqqueue_play_check():
 
     media_schedule[start_dt_2] = {"id": 56, \
             "type":"file", \
-            "row_id":9, \
+            "row_id":2, \
             "uri":"", \
             "dst":audioPath2, \
             "fade_in":0, \
@@ -131,9 +178,59 @@ def test_pypoliqqueue_play_check():
             "replay_gain": 0, \
             "independent_event": True \
             }
+
+    audioPath3 = os.path.abspath("audio_1.mp3")
+    m = mutagen.File(audioPath3, easy=True)
+    length3 = round(getattr(m.info, 'length', 0.0), 3)
+
+    start_dt_3 = end_dt_2
+    end_dt_3 = start_dt_3 + timedelta(seconds=length3)
+
+    media_schedule[start_dt_3] = {"id": 57, \
+            "type":"file", \
+            "row_id":3, \
+            "uri":"", \
+            "dst":audioPath3, \
+            "fade_in":0, \
+            "fade_out":0, \
+            "cue_in":0, \
+            "cue_out":length3, \
+            "file_ready":True, \
+            "start": start_dt_3, \
+            "end": end_dt_3, \
+            "show_name":"Test Show 1", \
+            "replay_gain": 0, \
+            "independent_event": True \
+            }
+
+    audioPath4 = os.path.abspath("audio_2.mp3")
+    m = mutagen.File(audioPath3, easy=True)
+    length4 = round(getattr(m.info, 'length', 0.0), 3)
+
+    start_dt_4 = end_dt_3
+    end_dt_4 = start_dt_4 + timedelta(seconds=length3)
+
+    media_schedule[start_dt_4] = {"id": 58, \
+            "type":"file", \
+            "row_id":4, \
+            "uri":"", \
+            "dst":audioPath4, \
+            "fade_in":0, \
+            "fade_out":0, \
+            "cue_in":0, \
+            "cue_out":length4, \
+            "file_ready":True, \
+            "start": start_dt_4, \
+            "end": end_dt_4, \
+            "show_name":"Test Show 1", \
+            "replay_gain": 0, \
+            "independent_event": True \
+            }
+
     pypoPush_q.put(media_schedule)
 
-    print "sched: %s" % media_schedule
+    print "schedule:"
+    print pprint.pformat(media_schedule)
     print "start_dt_1: %s" % start_dt_1
 
     wait_time = date_interval_to_seconds_withneg(media_schedule[start_dt_1]['start'] - datetime.utcnow())
@@ -141,19 +238,19 @@ def test_pypoliqqueue_play_check():
 
     time.sleep(wait_time + 1) #Add 1 second just to make sure the media already started playing
 
-    #assert is_playing(media_schedule[start_dt_1]) == True
-    #assert is_playing(media_schedule[start_dt_2]) == False
-
     wait_time = date_interval_to_seconds_withneg(media_schedule[start_dt_2]['start'] - datetime.utcnow())
     
     # Start a new thread for the purpose of requeuing the same sched just before the 2nd track plays
-    Thread(target = requeue, args=[wait_time, pp.future_scheduled_queue, media_schedule, -0.1]).start()
+    Thread(target = requeue, args=[wait_time, pp.future_scheduled_queue, media_schedule, 0.1]).start()
 
     print "%s: Wait %s secs until 2nd media plays.." % (datetime.utcnow(), wait_time)
     time.sleep(wait_time + 1) #Add 1 second just to make sure the media already started playing
 
-    #assert is_playing(media_schedule[start_dt_2]) == True
-    #assert is_playing(media_schedule[start_dt_1]) == False
+
+    wait_time = date_interval_to_seconds_withneg(media_schedule[start_dt_4]['end'] - datetime.utcnow())
+    time.sleep(wait_time + 1) #Add 1 second just to make sure the media already started playing
+
+    check_playback( media_schedule, caplog)
 
 
 

@@ -3,13 +3,17 @@ from threading import Lock
 from Queue import Queue
 
 import datetime
+import pytest
+
+pytestmark = pytest.mark.skip('skipping entire module')
 
 pypoPush_q = Queue()
 telnet_lock = Lock()
 
-pp = PypoPush(pypoPush_q, telnet_lock)
-
+@pytest.mark.skip(reason="modify_first_link_cue_point does not exist")
 def test_modify_cue_in():
+    pp = PypoPush(pypoPush_q, telnet_lock)
+
     link = pp.modify_first_link_cue_point([])
     assert len(link) == 0
 
