@@ -897,6 +897,23 @@ SQL;
         return array($range_start, $range_end);
     }
 
+    private static function mdiff($date1, $date2){
+        //Absolute val of Date 1 in seconds from  (EPOCH Time) - Date 2 in seconds from (EPOCH Time)
+        $diff = abs(strtotime($date1->format('Y-m-d H:i:s'))-strtotime($date2->format('Y-m-d H:i:s')));
+
+        //Creates variables for the microseconds of date1 and date2
+        $micro1 = $date1->format("u");
+        $micro2 = $date2->format("u");
+
+        //Difference between these micro seconds:
+        $diffmicro = $micro1 - $micro2;
+        $interval = ((($diff) * 1000000) + $diffmicro )/1000000;
+
+        list($sec,$micro) = explode('.', number_format($interval, 2,'.', ''));
+
+        $difference = gmdate("H:i:s", $sec) . "." . str_pad($micro,3,'0');
+        return $difference;
+    }
 
     private static function createScheduledEvents(&$data, $range_start, $range_end)
     {
@@ -914,10 +931,8 @@ SQL;
                 continue;
             }
 
-            if ($trackEndDateTime->getTimestamp() > $showEndDateTime->getTimestamp()) {
-                $di = $trackStartDateTime->diff($showEndDateTime);
-
-                $item["cue_out"] = $di->format("%H:%i:%s").".000";
+            if ($trackEndDateTime->getTimestamp() >= $showEndDateTime->getTimestamp()) {
+                $item["cue_out"] = self::mdiff($showEndDateTime, $trackStartDateTime);
                 $item["end"] = $showEndDateTime->format("Y-m-d H:i:s");
             }
 
